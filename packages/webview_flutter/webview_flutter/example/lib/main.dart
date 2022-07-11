@@ -9,11 +9,32 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:animated_splash_screen/animated_splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-void main() => runApp(const MaterialApp(home: WebViewExample()));
+// void main() => runApp(const MaterialApp(home: WebViewExample()));
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'CLOZUP',
+      debugShowCheckedModeBanner: false,
+      home: AnimatedSplashScreen(
+        splash: Image.asset('assets/Image/BI_Text_Symbol_W.png'),
+        splashIconSize: 100,
+        nextScreen: const WebViewExample(),
+        splashTransition: SplashTransition.fadeTransition,
+        backgroundColor: Colors.black,
+      ),
+    );
+  }
+}
 
 const String kNavigationExamplePage = '''
 <!DOCTYPE html><html>
@@ -82,7 +103,14 @@ class WebViewExample extends StatefulWidget {
 class _WebViewExampleState extends State<WebViewExample> {
   final Completer<WebViewController> _controller =
       Completer<WebViewController>();
+  late WebViewController controller;
 
+  int selectedIndex = 0;
+  final List<String> webviewList = [
+    "https://www.clozup.co.kr/",
+    "https://www.clozup.co.kr/service",
+    "https://www.clozup.co.kr/contact"
+  ];
   @override
   void initState() {
     super.initState();
@@ -93,47 +121,75 @@ class _WebViewExampleState extends State<WebViewExample> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.green,
-      appBar: AppBar(
-        title: const Text('Flutter WebView example'),
-        // This drop down menu demonstrates that Flutter widgets can be shown over the web view.
-        actions: <Widget>[
-          NavigationControls(_controller.future),
-          SampleMenu(_controller.future, widget.cookieManager),
-        ],
-      ),
-      body: WebView(
-        initialUrl: 'https://flutter.dev',
-        javascriptMode: JavascriptMode.unrestricted,
-        onWebViewCreated: (WebViewController webViewController) {
-          _controller.complete(webViewController);
-        },
-        onProgress: (int progress) {
-          print('WebView is loading (progress : $progress%)');
-        },
-        javascriptChannels: <JavascriptChannel>{
-          _toasterJavascriptChannel(context),
-        },
-        navigationDelegate: (NavigationRequest request) {
-          if (request.url.startsWith('https://www.youtube.com/')) {
-            print('blocking navigation to $request}');
-            return NavigationDecision.prevent;
-          }
-          print('allowing navigation to $request');
-          return NavigationDecision.navigate;
-        },
-        onPageStarted: (String url) {
-          print('Page started loading: $url');
-        },
-        onPageFinished: (String url) {
-          print('Page finished loading: $url');
-        },
-        gestureNavigationEnabled: true,
-        backgroundColor: const Color(0x00000000),
-      ),
-      floatingActionButton: favoriteButton(),
-    );
+    return WillPopScope(
+        onWillPop: () => _goBack(context),
+        child: Scaffold(
+            // backgroundColor: Colors.green,
+            // appBar: AppBar(
+            //   title: const Text('Flutter WebView example'),
+            //   // This drop down menu demonstrates that Flutter widgets can be shown over the web view.
+            //   actions: <Widget>[
+            //     NavigationControls(_controller.future),
+            //     SampleMenu(_controller.future, widget.cookieManager),
+            //   ],
+            // ),
+            body: Center(
+            child: Container(
+              padding: const EdgeInsets.only(top: 44.0,),
+              child:WebView(
+              initialUrl: 'https://www.clozup.co.kr/',
+              javascriptMode: JavascriptMode.unrestricted,
+              onWebViewCreated: (WebViewController webViewController) {
+                _controller.complete(webViewController);
+              },
+              onProgress: (int progress) {
+                print('WebView is loading (progress : $progress%)');
+              },
+              javascriptChannels: <JavascriptChannel>{
+                _toasterJavascriptChannel(context),
+              },
+              navigationDelegate: (NavigationRequest request) {
+                if (request.url.startsWith('https://www.youtube.com/')) {
+                  print('blocking navigation to $request}');
+                  return NavigationDecision.prevent;
+                }
+                print('allowing navigation to $request');
+                return NavigationDecision.navigate;
+              },
+              onPageStarted: (String url) {
+                print('Page started loading: $url');
+              },
+              onPageFinished: (String url) {
+                print('Page finished loading: $url');
+              },
+              gestureNavigationEnabled: true,
+              backgroundColor: const Color(0x00000000),
+            ))),
+            bottomNavigationBar: BottomNavigationBar(
+              currentIndex: selectedIndex,
+              items: const <BottomNavigationBarItem>[
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'home'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.miscellaneous_services),
+                    label: 'services'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.contact_support), label: 'contact us')
+              ],
+              onTap: (i) {
+                controller.loadUrl(webviewList[i]);
+                setState(() => selectedIndex = i);
+              },
+            )));
+  }
+
+  Future<bool> _goBack(BuildContext context) async {
+    if (await controller.canGoBack()) {
+      await controller.goBack();
+
+      return Future.value(false);
+    } else {
+      return Future.value(true);
+    }
   }
 
   JavascriptChannel _toasterJavascriptChannel(BuildContext context) {
